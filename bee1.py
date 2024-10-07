@@ -1,36 +1,49 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.integrate import odeint
 
-# Define time parameters for the simulation
-time_end = 20  # Duration of the simulation
-time_steps = 500  # Number of time steps
-t = np.linspace(0, time_end, time_steps)  # Time array
+# Define the system of differential equations
+def bee_model(y, t):
+    S, D = y
+    dS_dt = np.sin(D)
+    dD_dt = S - D
+    return [dS_dt, dD_dt]
 
-# Define initial conditions
-S_initial = 0  # Neutral smell intensity at t=0
-D_initial = 5  # Bee starts at distance 5 from its hive
+# Initial conditions
+S0 = 0   # Initial smell intensity
+D0 = 5   # Initial distance from the hive
+y0 = [S0, D0]
 
-# Initialize arrays to store results
-S = np.zeros(time_steps)
-D = np.zeros(time_steps)
-S[0] = S_initial
-D[0] = D_initial
+# Time points for the simulation
+t = np.linspace(0, 20, 1000)
 
-# Define time step size
-dt = t[1] - t[0]
+# Solve the differential equations
+solution = odeint(bee_model, y0, t)
 
-# Perform the simulation using Euler's method
-for i in range(1, time_steps):
-    S[i] = S[i-1] + np.sin(D[i-1]) * dt
-    D[i] = D[i-1] + (S[i-1] - D[i-1]) * dt
+# Extract S(t) and D(t)
+S_t = solution[:, 0]
+D_t = solution[:, 1]
 
-# Plotting the results
-plt.figure(figsize=(10, 5))
-plt.plot(t, S, label='Smell Intensity S(t)')
-plt.plot(t, D, label='Distance from Hive D(t)', linestyle='--')
-plt.xlabel('Time (t)')
-plt.ylabel('Value')
-plt.title('Bee Movement Simulation: Smell Intensity and Distance Over Time')
+# Plot the results
+plt.figure(figsize=(14, 6))
+
+# Distance over time
+plt.subplot(1, 2, 1)
+plt.plot(t, D_t, label='Distance D(t)')
+plt.xlabel('Time t')
+plt.ylabel('Distance from Hive D(t)')
+plt.title('Bee Distance Over Time')
 plt.legend()
 plt.grid(True)
+
+# Smell intensity over time
+plt.subplot(1, 2, 2)
+plt.plot(t, S_t, label='Smell Intensity S(t)', color='orange')
+plt.xlabel('Time t')
+plt.ylabel('Smell Intensity S(t)')
+plt.title('Smell Intensity Over Time')
+plt.legend()
+plt.grid(True)
+
+plt.tight_layout()
 plt.show()
