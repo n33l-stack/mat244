@@ -1,0 +1,33 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define the matrix M
+M = np.array([[2, 2], [0, -1]])
+
+# Calculate eigenvalues and eigenvectors
+eigenvalues, eigenvectors = np.linalg.eig(M)
+
+# Define the system of differential equations
+def system(state, t):
+    return M @ state
+
+# Create a grid of initial conditions for the phase portrait
+x = np.linspace(-2, 2, 20)
+y = np.linspace(-2, 2, 20)
+X, Y = np.meshgrid(x, y)
+U = M[0, 0] * X + M[0, 1] * Y
+V = M[1, 0] * X + M[1, 1] * Y
+
+# Plotting the phase portrait
+plt.figure(figsize=(10, 8))
+plt.streamplot(X, Y, U, V, color=np.sqrt(U**2 + V**2), cmap='plasma', linewidth=1)
+plt.quiver(0, 0, eigenvectors[0, 0], eigenvectors[1, 0], color='r', scale=3, label='Eigenvector 1')
+plt.quiver(0, 0, eigenvectors[0, 1], eigenvectors[1, 1], color='b', scale=3, label='Eigenvector 2')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('Phase Portrait for System dx/dt = 2x + 2y, dy/dt = -y')
+plt.axhline(0, color='grey', lw=0.5)
+plt.axvline(0, color='grey', lw=0.5)
+plt.legend()
+plt.grid(True)
+plt.show()
