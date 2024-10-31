@@ -1,0 +1,28 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define the system of differential equations in matrix form
+# x'(t) = 2x(t) + 2y(t)
+# y'(t) = -y(t)
+# So the matrix is [[2, 2], [0, -1]]
+A = np.array([[2, 2], [0, -1]])
+
+# Define a grid of points in phase space
+x_vals = np.linspace(-2, 2, 20)
+y_vals = np.linspace(-2, 2, 20)
+X, Y = np.meshgrid(x_vals, y_vals)
+
+# Compute the derivatives at each grid point
+U = 2*X + 2*Y
+V = -Y
+
+# Plot the phase portrait
+plt.figure(figsize=(6, 6))
+plt.quiver(X, Y, U, V, color="b")
+plt.title("Phase Portrait of the System")
+plt.xlabel("x(t)")
+plt.ylabel("y(t)")
+plt.xlim([-2, 2])
+plt.ylim([-2, 2])
+plt.grid(True)
+plt.show()
