@@ -1,137 +1,130 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.interpolate import interp1d
 
-# Parameters
-R0 = 2.5     # Base rent (thousands)
-a = 0.5      # Sensitivity of Rmax to population
-g = 0.5      # Rent growth baseline
-K = 10.0      # Carrying capacity for population
-P0 = 5.0      # Initial population (millions)
-R_init = 2.5  # Initial rent (thousands)
-t_span = (0, 10)  # Time span in decades
-t_eval_fixed = np.linspace(t_span[0], t_span[1], 300)  # Shared time grid for consistency
+# ---------------------------
+# Original (Unmodified) Model
+# ---------------------------
+# Equations:
+# P'(t) = P(t)(10 - P(t)) - R(t)
+# R'(t) = 0.5 R(t)
 
-# Define the modified system of equations
-def system(t, y):
-    P, R = y
-    if P <= 0:  # Avoid log(0)
-        P = 1e-5
-    R_max = R0 + a * np.log(P)
-    dP_dt = P * (K - P) - R
-    dR_dt = g * R * (1 - R / R_max)
-    return [dP_dt, dR_dt]
+def unmodified_system(t, Y):
+    P, R = Y
+    dPdt = P*(10 - P) - R
+    dRdt = 0.5*R
+    return [dPdt, dRdt]
 
-# Solve the modified system (with rent control)
-sol = solve_ivp(system, t_span, [P0, R_init], t_eval=t_eval_fixed, method='RK45')
-P_sol = sol.y[0]  # Population solution
-R_sol = sol.y[1]  # Rent solution
-t = sol.t         # Time grid
+# Initial conditions
+P0 = 5.0   # millions
+R0 = 2.5   # thousand dollars
+Y0 = [P0, R0]
 
-# Define the unmodified system (no rent control)
-def population_no_control(t, y):
-    P, R = y
-    dP_dt = P * (K - P) - R
-    dR_dt = g * R  # Exponential growth
-    return [dP_dt, dR_dt]
+# Solve over 0 to 10 decades
+t_span = (0, 10)
+t_eval = np.linspace(t_span[0], t_span[1], 300)
+sol_unmodified = solve_ivp(unmodified_system, t_span, Y0, t_eval=t_eval)
 
-# Solve the unmodified system (no rent control)
-sol_no_control = solve_ivp(population_no_control, t_span, [P0, R_init], t_eval=t_eval_fixed, method='RK45')
-interp_no_control_P = interp1d(sol_no_control.t, sol_no_control.y[0], kind='linear', fill_value="extrapolate")
-interp_no_control_R = interp1d(sol_no_control.t, sol_no_control.y[1], kind='linear', fill_value="extrapolate")
-P_no_control_interp = interp_no_control_P(t_eval_fixed)
-R_no_control_interp = interp_no_control_R(t_eval_fixed)
+# Figure 1: Unmodified Model
+fig1, ax1 = plt.subplots()
+ax1.plot(sol_unmodified.t, sol_unmodified.y[0], label='Population (millions)')
+ax1.set_xlabel('Time (decades)')
+ax1.set_ylabel('Population (millions)', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
 
-# ----------------------------
-# Diagram 1: Time Evolution with Rent Control
-# ----------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(t, P_sol, label="Population (millions)", linewidth=2, color='green')
-plt.plot(t, R_sol, label="Rent (thousands)", linewidth=2, color='blue')
-plt.title("Time Evolution of Population and Rent (With Rent Control)", fontsize=14)
-plt.xlabel("Time (decades)", fontsize=12)
-plt.ylabel("Population / Rent", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
+ax2 = ax1.twinx()
+ax2.plot(sol_unmodified.t, sol_unmodified.y[1], color='red', label='Rent (k$)')
+ax2.set_ylabel('Rent (thousand $)', color='red')
+ax2.tick_params(axis='y', labelcolor='red')
+
+ax1.set_title('Figure 1: Unmodified Model Dynamics')
+ax1.grid(True)
 plt.tight_layout()
 plt.show()
 
-# ----------------------------
-# Diagram 2: Phase Portrait with Rent Control
-# ----------------------------
-P_vals = np.linspace(1, K, 100)
-R_vals = np.linspace(1, 10, 100)
+
+# ---------------------------
+# Modified Model with Legislation
+# ---------------------------
+# New equations:
+# P'(t) = P(t)(10 - P(t)) - R(t)
+# R'(t) = 0.5 R(t) [1 - R(t)/(R0 + a ln(P(t)))]
+# Parameters for modified model
+R0_param = 2.5
+a_param = 0.5
+
+def modified_system(t, Y):
+    P, R = Y
+    if P <= 0:
+        # Avoid log domain errors; if population ever drops below or equal to zero,
+        # force a small positive value or handle it gracefully.
+        P_mod = max(P, 1e-3)
+    else:
+        P_mod = P
+    
+    dPdt = P*(10 - P) - R
+    R_max = R0_param + a_param * np.log(P_mod)
+    # Ensure R_max > 0: If P_mod < 1, log(P_mod)<0. For simplicity assume population stays >0.
+    dRdt = 0.5 * R * (1 - R / R_max)
+    return [dPdt, dRdt]
+
+# Solve modified system
+sol_modified = solve_ivp(modified_system, t_span, Y0, t_eval=t_eval)
+
+# Figure 2: Modified Model Time Evolution
+fig2, ax1 = plt.subplots()
+ax1.plot(sol_modified.t, sol_modified.y[0], label='Population (millions)')
+ax1.set_xlabel('Time (decades)')
+ax1.set_ylabel('Population (millions)', color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
+
+ax2 = ax1.twinx()
+ax2.plot(sol_modified.t, sol_modified.y[1], color='red', label='Rent (k$)')
+ax2.set_ylabel('Rent (thousand $)', color='red')
+ax2.tick_params(axis='y', labelcolor='red')
+
+ax1.set_title('Figure 2: Modified Model Dynamics with Legislation')
+ax1.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+# ---------------------------
+# Figure 3: Phase Portrait
+# ---------------------------
+# We will create a grid of (P, R) points and plot vector fields along with solution trajectories.
+P_vals = np.linspace(0.5, 10, 20)
+R_vals = np.linspace(0, 6, 20)
 PP, RR = np.meshgrid(P_vals, R_vals)
-R_max_grid = R0 + a * np.log(PP)
-dP_dt = PP * (K - PP) - RR
-dR_dt = g * RR * (1 - RR / R_max_grid)
 
-plt.figure(figsize=(10, 6))
-plt.streamplot(P_vals, R_vals, dP_dt, dR_dt, density=1.5, color='blue', linewidth=1)
-plt.plot(P_sol[-1], R_sol[-1], 'ro', label='Approx. Equilibrium')
-plt.title("Phase Portrait: Population vs Rent Dynamics (With Rent Control)", fontsize=14)
-plt.xlabel("Population (millions)", fontsize=12)
-plt.ylabel("Rent (thousands)", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
-plt.tight_layout()
-plt.show()
+# Compute vector field
+dP = PP*(10-PP) - RR
+# For vector field, ensure positivity in log:
+R_max_grid = R0_param + a_param*np.log(np.maximum(PP, 1e-3))
+dR = 0.5*RR*(1 - RR/R_max_grid)
 
-# ----------------------------
-# Diagram 3: Rent Growth Without Control
-# ----------------------------
-t_vals = np.linspace(0, 10, 300)
-R_unmodified = R0 * np.exp(g * t_vals)  # Exponential rent growth
+fig3, ax3 = plt.subplots()
+# Plot vector field arrows
+ax3.quiver(PP, RR, dP, dR, color='gray', alpha=0.5)
 
-plt.figure(figsize=(10, 6))
-plt.plot(t_vals, R_unmodified, label="Exponential Rent Growth (No Legislation)", linewidth=2, color='orange')
-plt.title("Unmodified Rent Growth (No Rent Control)", fontsize=14)
-plt.xlabel("Time (decades)", fontsize=12)
-plt.ylabel("Rent (thousands)", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
-plt.tight_layout()
-plt.show()
+# Plot a few solution trajectories from different initial conditions
+initial_conditions = [
+    [5.0, 2.5],   # our original initial condition
+    [3.0, 1.0],
+    [8.0, 4.0],
+    [9.0, 0.5],
+    [2.0, 5.0]
+]
 
-# ----------------------------
-# Diagram 4: Comparison of Rent Growth
-# ----------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(t, R_sol, label="Modified Rent Growth (With Legislation)", linewidth=2, color='blue')
-plt.plot(t_vals, R_unmodified, label="Exponential Rent Growth (No Legislation)", linewidth=2, linestyle='dashed', color='orange')
-plt.title("Comparison of Rent Growth: With vs Without Rent Control", fontsize=14)
-plt.xlabel("Time (decades)", fontsize=12)
-plt.ylabel("Rent (thousands)", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
-plt.tight_layout()
-plt.show()
+for ic in initial_conditions:
+    sol = solve_ivp(modified_system, t_span, ic, max_step=0.1)
+    ax3.plot(sol.y[0], sol.y[1], '-', label=f'IC: P={ic[0]}, R={ic[1]}')
 
-# ----------------------------
-# Diagram 5: Comparison of Population Dynamics
-# ----------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(t_eval_fixed, P_no_control_interp, label="Population (No Rent Control)", linewidth=2, color='red')
-plt.plot(t_eval_fixed, P_sol, label="Population (With Rent Control)", linewidth=2, color='green')
-plt.title("Comparison of Population Dynamics: With vs Without Rent Control", fontsize=14)
-plt.xlabel("Time (decades)", fontsize=12)
-plt.ylabel("Population (millions)", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
-plt.tight_layout()
-plt.show()
+ax3.set_xlabel('Population (millions)')
+ax3.set_ylabel('Rent (thousand $)')
+ax3.set_title('Figure 3: Phase Portrait of Modified Model')
+ax3.grid(True)
+ax3.legend(loc='upper right', fontsize='small')
 
-# ----------------------------
-# Diagram 6: Comparison of Rent Dynamics
-# ----------------------------
-plt.figure(figsize=(10, 6))
-plt.plot(t_eval_fixed, R_no_control_interp, label="Rent (No Rent Control)", linewidth=2, color='red')
-plt.plot(t_eval_fixed, R_sol, label="Rent (With Rent Control)", linewidth=2, color='blue')
-plt.title("Comparison of Rent Dynamics: With vs Without Rent Control", fontsize=14)
-plt.xlabel("Time (decades)", fontsize=12)
-plt.ylabel("Rent (thousands)", fontsize=12)
-plt.grid(True)
-plt.legend(fontsize=12)
 plt.tight_layout()
 plt.show()
